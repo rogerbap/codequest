@@ -1,4 +1,4 @@
-/ server/seeds/quickFireQuestions.js
+// server/seeds/quickFireQuestions.js
 const quickFireQuestions = [
   // Level 1: Syntax Basics
   {

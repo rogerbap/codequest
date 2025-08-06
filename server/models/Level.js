@@ -1,4 +1,4 @@
-/ server/models/Level.js
+// server/models/Level.js
 const mongoose = require('mongoose');
 
 const levelSchema = new mongoose.Schema({

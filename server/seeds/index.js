@@ -1,4 +1,4 @@
-/ server/seeds/index.js
+// server/seeds/index.js
 const mongoose = require('mongoose');
 const Question = require('../models/Question');
 const Level = require('../models/Level');

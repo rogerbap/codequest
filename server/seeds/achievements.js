@@ -1,4 +1,4 @@
-/ server/seeds/achievements.js
+// server/seeds/achievements.js
 const achievements = [
   {
     key: 'speedRunner',

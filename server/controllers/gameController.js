@@ -1,4 +1,4 @@
-/ server/controllers/gameController.js
+// server/controllers/gameController.js
 const Question = require('../models/Question');
 const Level = require('../models/Level');
 const UserProgress = require('../models/UserProgress');

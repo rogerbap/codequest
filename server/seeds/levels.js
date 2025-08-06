@@ -1,4 +1,4 @@
-/ server/seeds/levels.js
+// server/seeds/levels.js
 const levels = [
   // Quick Fire Levels
   {

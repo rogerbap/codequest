@@ -1,4 +1,4 @@
-/ src/services/gameService.js
+// src/services/gameService.js
 import api from './api';
 
 class GameService {

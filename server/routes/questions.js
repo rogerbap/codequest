@@ -1,4 +1,4 @@
-/ server/routes/questions.js
+// server/routes/questions.js
 const express = require('express');
 const router = express.Router();
 const Question = require('../models/Question');
