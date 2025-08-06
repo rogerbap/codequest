@@ -79,22 +79,26 @@ app.use('/api/users', userRoutes);
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../build')));
-  
-  // Catch all handler for React Router
-  app.get('*', (req, res, next) => {
-    // Skip API routes
-    if (req.path.startsWith('/api/')) {
-      return next();
-    }
+}
+
+// Error handling middleware (must be before catch-all handlers)
+app.use(errorHandler);
+
+// Production catch-all handler for React Router (serves index.html for non-API routes)
+if (process.env.NODE_ENV === 'production') {
+  app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../build', 'index.html'));
   });
 }
 
-// Error handling middleware (must be before 404 handler)
-app.use(errorHandler);
-
-// Handle 404 routes
-app.use('*', (req, res) => {
+// Final middleware - Handle all unmatched routes (404 handler)
+app.use((req, res) => {
+  // In production, serve React app for non-API routes
+  if (process.env.NODE_ENV === 'production' && !req.path.startsWith('/api/')) {
+    return res.sendFile(path.join(__dirname, '../build', 'index.html'));
+  }
+  
+  // Otherwise return 404 JSON response
   res.status(404).json({
     success: false,
     error: 'Route not found',
