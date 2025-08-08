@@ -1,5 +1,6 @@
 // server/controllers/authController.js
 const AuthService = require('../services/authService');
+const User = require('../models/User');
 const { body, validationResult } = require('express-validator');
 
 // Validation rules
@@ -192,11 +193,13 @@ class AuthController {
   }
 }
 
+const controller = new AuthController();
+
 // Export controller methods with validation
 module.exports = {
-  register: [registerValidation, new AuthController().register],
-  login: [loginValidation, new AuthController().login],
-  logout: new AuthController().logout,
-  getMe: new AuthController().getMe,
-  updateProfile: new AuthController().updateProfile
+  register: [registerValidation, controller.register.bind(controller)],
+  login: [loginValidation, controller.login.bind(controller)],
+  logout: controller.logout.bind(controller),
+  getMe: controller.getMe.bind(controller),
+  updateProfile: controller.updateProfile.bind(controller)
 };

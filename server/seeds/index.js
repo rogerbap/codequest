@@ -18,34 +18,64 @@ const seedDatabase = async () => {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-
     console.log('Connected to MongoDB');
 
-    // Clear existing data
+    // Clear existing data with proper error handling
     console.log('Clearing existing data...');
-    await Question.deleteMany({});
-    await Level.deleteMany({});
-    await Achievement.deleteMany({});
+    
+    try {
+      await Question.deleteMany({});
+      console.log('Questions cleared');
+    } catch (err) {
+      console.log('Error clearing questions:', err.message);
+    }
+
+    try {
+      await Level.deleteMany({});
+      console.log('Levels cleared');
+    } catch (err) {
+      console.log('Error clearing levels:', err.message);
+    }
+
+    try {
+      await Achievement.deleteMany({});
+      console.log('Achievements cleared');
+    } catch (err) {
+      console.log('Error clearing achievements:', err.message);
+    }
 
     // Seed questions
     console.log('Seeding questions...');
-    await Question.insertMany([...quickFireQuestions, ...careerQuestions]);
-    console.log(`${quickFireQuestions.length + careerQuestions.length} questions seeded`);
+    try {
+      const allQuestions = [...quickFireQuestions, ...careerQuestions];
+      await Question.insertMany(allQuestions);
+      console.log(`${allQuestions.length} questions seeded successfully`);
+    } catch (err) {
+      console.error('Error seeding questions:', err.message);
+    }
 
     // Seed levels
     console.log('Seeding levels...');
-    await Level.insertMany(levels);
-    console.log(`${levels.length} levels seeded`);
+    try {
+      await Level.insertMany(levels);
+      console.log(`${levels.length} levels seeded successfully`);
+    } catch (err) {
+      console.error('Error seeding levels:', err.message);
+    }
 
     // Seed achievements
     console.log('Seeding achievements...');
-    await Achievement.insertMany(achievements);
-    console.log(`${achievements.length} achievements seeded`);
+    try {
+      await Achievement.insertMany(achievements);
+      console.log(`${achievements.length} achievements seeded successfully`);
+    } catch (err) {
+      console.error('Error seeding achievements:', err.message);
+    }
 
-    console.log('Database seeded successfully!');
+    console.log('✅ Database seeded successfully!');
     process.exit(0);
   } catch (error) {
-    console.error('Seeding error:', error);
+    console.error('❌ Seeding error:', error);
     process.exit(1);
   }
 };

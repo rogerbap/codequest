@@ -15,11 +15,14 @@ const LevelSelector = ({ onSelectLevel, onBack }) => {
   
   const { user } = useAuth();
 
+  // FIXED: Remove loadLevels from dependency array to prevent infinite loop
   useEffect(() => {
-    if (gameMode && loadLevels) {
+    console.log('LevelSelector useEffect called', { gameMode, levelsLength: levels.length, loading, error });
+    if (gameMode && levels.length === 0 && !loading && !error) {
+      console.log('Loading levels for:', gameMode);
       loadLevels(gameMode);
     }
-  }, [gameMode, loadLevels]);
+  }, [gameMode, levels.length, loading, error]); // Removed loadLevels
 
   const userProgress = user?.gameStats?.[gameMode] || {};
   const unlockedLevels = gameMode === 'career' ? 

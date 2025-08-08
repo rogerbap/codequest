@@ -1,5 +1,5 @@
 // src/contexts/GameContext.jsx
-import React, { createContext, useContext, useReducer } from 'react';
+import React, { createContext, useContext, useReducer, useCallback, useRef } from 'react';
 import gameService from '../services/gameService';
 
 const GameContext = createContext();
@@ -34,13 +34,16 @@ const gameReducer = (state, action) => {
         ...state,
         gameMode: action.payload,
         currentLevel: 1,
-        currentQuestion: 1
+        currentQuestion: 1,
+        levels: [], // Reset levels when changing mode
+        questions: [] // Reset questions when changing mode
       };
     case 'SET_LEVEL':
       return {
         ...state,
         currentLevel: action.payload,
-        currentQuestion: 1
+        currentQuestion: 1,
+        questions: [] // Reset questions when changing level
       };
     case 'SET_QUESTION':
       return {
@@ -107,12 +110,16 @@ const gameReducer = (state, action) => {
     case 'SET_LEVELS':
       return {
         ...state,
-        levels: action.payload
+        levels: action.payload,
+        loading: false,
+        error: null
       };
     case 'SET_QUESTIONS':
       return {
         ...state,
-        questions: action.payload
+        questions: action.payload,
+        loading: false,
+        error: null
       };
     case 'SET_LOADING':
       return {
@@ -137,28 +144,50 @@ const gameReducer = (state, action) => {
 
 export const GameProvider = ({ children }) => {
   const [state, dispatch] = useReducer(gameReducer, initialState);
+  
+  // Track loading requests to prevent duplicates
+  const loadingRef = useRef({ levels: false, questions: false });
 
   // Load levels for game mode
-  const loadLevels = async (gameMode) => {
+  const loadLevels = useCallback(async (gameMode) => {
+    // Don't load if already loading levels or if we already have levels
+    if (loadingRef.current.levels || state.loading || state.levels.length > 0) {
+      return;
+    }
+    
+    loadingRef.current.levels = true;
     dispatch({ type: 'SET_LOADING', payload: true });
+    dispatch({ type: 'SET_ERROR', payload: null });
+    
     try {
       const levels = await gameService.getLevels(gameMode);
       dispatch({ type: 'SET_LEVELS', payload: levels });
     } catch (error) {
       dispatch({ type: 'SET_ERROR', payload: error.message });
+    } finally {
+      loadingRef.current.levels = false;
     }
-  };
+  }, [state.loading, state.levels.length]);
 
   // Load questions for level
-  const loadQuestions = async (gameMode, levelId) => {
+  const loadQuestions = useCallback(async (gameMode, levelId) => {
+    if (loadingRef.current.questions || state.loading || state.questions.length > 0) {
+      return;
+    }
+    
+    loadingRef.current.questions = true;
     dispatch({ type: 'SET_LOADING', payload: true });
+    dispatch({ type: 'SET_ERROR', payload: null });
+    
     try {
       const questions = await gameService.getQuestions(gameMode, levelId);
       dispatch({ type: 'SET_QUESTIONS', payload: questions });
     } catch (error) {
       dispatch({ type: 'SET_ERROR', payload: error.message });
+    } finally {
+      loadingRef.current.questions = false;
     }
-  };
+  }, [state.loading, state.questions.length]);
 
   // Submit solution
   const submitSolution = async (solutionData) => {
@@ -228,6 +257,7 @@ export const GameProvider = ({ children }) => {
     loadLevels,
     loadQuestions,
     submitSolution,
+    setGameMode,
     setLevel,
     setQuestion,
     updateCode,

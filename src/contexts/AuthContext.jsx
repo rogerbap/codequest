@@ -1,5 +1,5 @@
 // src/contexts/AuthContext.jsx
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import api from '../services/api';
 
 const AuthContext = createContext();
@@ -56,6 +56,14 @@ const authReducer = (state, action) => {
         ...state,
         loading: action.payload
       };
+    case 'UPDATE_USER_STATS':
+      return {
+        ...state,
+        user: {
+          ...state.user,
+          gameStats: action.payload
+        }
+      };
     default:
       return state;
   }
@@ -63,12 +71,15 @@ const authReducer = (state, action) => {
 
 export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
+  const hasAttemptedLoad = useRef(false);
 
-  // Load user on mount
+  // Load user on mount - but only once
   useEffect(() => {
-    if (state.token) {
+    if (state.token && !hasAttemptedLoad.current) {
+      hasAttemptedLoad.current = true;
       loadUser();
-    } else {
+    } else if (!state.token && !hasAttemptedLoad.current) {
+      hasAttemptedLoad.current = true;
       dispatch({ type: 'SET_LOADING', payload: false });
     }
   }, []);
@@ -79,8 +90,15 @@ export const AuthProvider = ({ children }) => {
       const res = await api.get('/auth/me');
       dispatch({ type: 'USER_LOADED', payload: res.data.user });
     } catch (error) {
+      console.error('Load user error:', error);
       dispatch({ type: 'AUTH_ERROR', payload: error.response?.data?.error || 'Failed to load user' });
     }
+  };
+
+  // Update user stats (for when backend returns updated stats)
+  const updateUserStats = (updatedStats) => {
+    console.log('🔄 Updating user stats in context:', updatedStats);
+    dispatch({ type: 'UPDATE_USER_STATS', payload: updatedStats });
   };
 
   // Login user
@@ -117,6 +135,7 @@ export const AuthProvider = ({ children }) => {
       console.error('Logout error:', error);
     } finally {
       dispatch({ type: 'LOGOUT' });
+      hasAttemptedLoad.current = false; // Reset for potential re-login
     }
   };
 
@@ -143,7 +162,8 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateProfile,
     clearError,
-    loadUser
+    loadUser,
+    updateUserStats
   };
 
   return (

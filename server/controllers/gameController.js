@@ -82,8 +82,13 @@ class GameController {
   // @access  Private
   async submitSolution(req, res) {
     try {
+      console.log('🎯 Received submission request');
+      console.log('📥 Request body:', req.body);
+      console.log('👤 User ID:', req.user.id);
+      
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
+        console.log('❌ Validation errors:', errors.array());
         return res.status(400).json({
           success: false,
           error: 'Validation failed',
@@ -94,6 +99,9 @@ class GameController {
       const { gameMode, levelId, questionId, code, score, timeSpent, hintsUsed } = req.body;
       const userId = req.user.id;
 
+      console.log('✅ Validation passed, processing submission...');
+      console.log('📊 Submission data:', { gameMode, levelId, questionId, score, timeSpent, hintsUsed });
+
       // Find or create user progress
       let progress = await UserProgress.findOne({
         userId,
@@ -103,12 +111,15 @@ class GameController {
       });
 
       if (!progress) {
+        console.log('🆕 Creating new progress entry');
         progress = new UserProgress({
           userId,
           gameMode,
           levelId,
           questionId
         });
+      } else {
+        console.log('📝 Updating existing progress entry');
       }
 
       // Update progress
@@ -116,26 +127,71 @@ class GameController {
       await progress.markCompleted(score, timeSpent, code);
       progress.hintsUsed += hintsUsed;
 
+      console.log('💾 Progress saved:', progress.toObject());
+
       // Update user stats
       const user = await User.findById(userId);
+      console.log('👤 Current user stats before update:', user.gameStats[gameMode]);
+      
       const gameStats = user.gameStats[gameMode];
       
+      // Update total score and max level/question
       gameStats.totalScore = Math.max(gameStats.totalScore, gameStats.totalScore + score);
       gameStats.maxLevel = Math.max(gameStats.maxLevel, levelId);
       gameStats.maxQuestion = Math.max(gameStats.maxQuestion, questionId);
 
+      console.log('📈 Updated stats (before unlock logic):', gameStats);
+
       // Unlock next level in career mode
       if (gameMode === 'career') {
-        const nextLevelId = levelId + 1;
-        const nextLevel = await Level.findOne({ gameMode, levelId: nextLevelId });
+        console.log('🎓 Career mode - checking if next level should be unlocked');
         
-        if (nextLevel && !gameStats.unlockedLevels.includes(nextLevelId)) {
-          gameStats.unlockedLevels.push(nextLevelId);
+        // Check if all questions in current level are completed
+        const totalQuestionsInLevel = await Question.countDocuments({
+          gameMode,
+          levelId,
+          isActive: true
+        });
+        
+        const completedQuestionsInLevel = await UserProgress.countDocuments({
+          userId,
+          gameMode,
+          levelId,
+          completed: true
+        });
+
+        console.log('📊 Level completion check:', {
+          totalQuestionsInLevel,
+          completedQuestionsInLevel,
+          currentQuestionId: questionId
+        });
+
+        // If this was the last question and all questions are completed, unlock next level
+        if (completedQuestionsInLevel >= totalQuestionsInLevel) {
+          const nextLevelId = levelId + 1;
+          const nextLevel = await Level.findOne({ gameMode, levelId: nextLevelId });
+          
+          console.log('🔓 Checking for next level:', { nextLevelId, nextLevelExists: !!nextLevel });
+          
+          if (nextLevel && !gameStats.unlockedLevels.includes(nextLevelId)) {
+            gameStats.unlockedLevels.push(nextLevelId);
+            console.log('🎉 UNLOCKED NEXT LEVEL:', nextLevelId);
+            console.log('🔓 Updated unlocked levels:', gameStats.unlockedLevels);
+          } else if (nextLevel) {
+            console.log('ℹ️ Next level already unlocked');
+          } else {
+            console.log('ℹ️ No next level exists');
+          }
+        } else {
+          console.log('ℹ️ Level not yet complete, not unlocking next level');
         }
       }
 
       await user.save();
+      console.log('💾 User saved with updated stats:', user.gameStats[gameMode]);
 
+      console.log('🎉 Submission processed successfully');
+      
       res.status(200).json({
         success: true,
         message: 'Solution submitted successfully',
@@ -143,7 +199,7 @@ class GameController {
         updatedStats: user.gameStats
       });
     } catch (error) {
-      console.error('Submit solution error:', error);
+      console.error('💥 Submit solution error:', error);
       res.status(500).json({
         success: false,
         error: 'Server error submitting solution'
@@ -224,8 +280,8 @@ const submitSolutionValidation = [
   body('levelId').isInt({ min: 1 }).withMessage('Level ID must be a positive integer'),
   body('questionId').isInt({ min: 1 }).withMessage('Question ID must be a positive integer'),
   body('code').notEmpty().withMessage('Code is required'),
-  body('score').isInt({ min: 0 }).withMessage('Score must be a non-negative integer'),
-  body('timeSpent').isInt({ min: 0 }).withMessage('Time spent must be a non-negative integer'),
+  body('score').isFloat({ min: 0 }).withMessage('Score must be a non-negative number'),
+  body('timeSpent').isFloat({ min: 0 }).withMessage('Time spent must be a non-negative number'),
   body('hintsUsed').isInt({ min: 0 }).withMessage('Hints used must be a non-negative integer')
 ];
 
@@ -236,13 +292,13 @@ const gameModeValidation = [
 const controller = new GameController();
 
 module.exports = {
-  getLevels: [gameModeValidation, controller.getLevels],
+  getLevels: [gameModeValidation, controller.getLevels.bind(controller)],
   getQuestions: [
     param('gameMode').isIn(['quickFire', 'career']).withMessage('Invalid game mode'),
     param('levelId').isInt({ min: 1 }).withMessage('Level ID must be a positive integer'),
-    controller.getQuestions
+    controller.getQuestions.bind(controller)
   ],
-  submitSolution: [submitSolutionValidation, controller.submitSolution],
-  getProgress: [gameModeValidation, controller.getProgress],
-  getLeaderboard: [gameModeValidation, controller.getLeaderboard]
+  submitSolution: [submitSolutionValidation, controller.submitSolution.bind(controller)],
+  getProgress: [gameModeValidation, controller.getProgress.bind(controller)],
+  getLeaderboard: [gameModeValidation, controller.getLeaderboard.bind(controller)]
 };

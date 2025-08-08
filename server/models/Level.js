@@ -4,8 +4,7 @@ const mongoose = require('mongoose');
 const levelSchema = new mongoose.Schema({
   levelId: {
     type: Number,
-    required: true,
-    unique: true
+    required: true
   },
   gameMode: {
     type: String,
@@ -82,7 +81,10 @@ levelSchema.virtual('questionCount').get(function() {
   return this.questionIds ? this.questionIds.length : 0;
 });
 
-// Indexes
+// Compound unique index: levelId should be unique within each gameMode
+levelSchema.index({ gameMode: 1, levelId: 1 }, { unique: true });
+
+// Other indexes
 levelSchema.index({ gameMode: 1, order: 1 });
 levelSchema.index({ difficulty: 1, category: 1 });
 

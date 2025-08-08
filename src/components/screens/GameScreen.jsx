@@ -55,14 +55,20 @@ const GameScreen = ({ onBack, onHome }) => {
     error
   } = useGame();
 
-  const { user } = useAuth();
+  const { user, updateUserStats } = useAuth();
   
   const [showTests, setShowTests] = useState(false);
   const [newAchievement, setNewAchievement] = useState(null);
   const [startTime, setStartTime] = useState(null);
+  const [localShowHint, setLocalShowHint] = useState(false); // Local hint toggle state
 
   const currentQuestionData = questions[currentQuestion - 1];
   const totalQuestions = questions.length;
+
+  // Reset local hint state when question changes
+  useEffect(() => {
+    setLocalShowHint(false);
+  }, [currentQuestion]);
 
   // Memoize the time up handler to prevent recreation on every render
   const handleTimeUp = useCallback(() => {
@@ -75,20 +81,24 @@ const GameScreen = ({ onBack, onHome }) => {
     }
   }, [gameMode, updateLives, lives, onBack]);
 
-  // Load questions when level changes
+  // Load questions when level changes - remove loadQuestions from dependencies
   useEffect(() => {
-    if (gameMode && currentLevel && loadQuestions) {
+    console.log('GameScreen questions useEffect', { gameMode, currentLevel, questionsLength: questions.length, loading, error });
+    if (gameMode && currentLevel && questions.length === 0 && !loading && !error) {
+      console.log('Loading questions for level:', currentLevel);
       loadQuestions(gameMode, currentLevel);
     }
-  }, [gameMode, currentLevel, loadQuestions]);
+  }, [gameMode, currentLevel, questions.length, loading, error]);
 
-  // Set up question when questions load or question changes
+  // Set up question when questions load or question changes - remove setQuestion from dependencies
   useEffect(() => {
-    if (currentQuestionData && setQuestion) {
+    console.log('GameScreen setQuestion useEffect', { currentQuestionData: !!currentQuestionData, currentQuestion });
+    if (currentQuestionData) {
+      console.log('Setting question:', currentQuestion, 'with code:', currentQuestionData.brokenCode?.substring(0, 50) + '...');
       setQuestion(currentQuestion, currentQuestionData.brokenCode);
       setStartTime(Date.now());
     }
-  }, [currentQuestionData, currentQuestion, setQuestion]);
+  }, [currentQuestionData, currentQuestion]);
 
   // Timer for quick fire mode
   useEffect(() => {
@@ -102,6 +112,18 @@ const GameScreen = ({ onBack, onHome }) => {
       return () => clearInterval(timer);
     }
   }, [gameMode, timeLeft, setTimeLeft, handleTimeUp]);
+
+  // Fixed hint toggle function
+  const toggleHint = () => {
+    if (localShowHint) {
+      // Hide hint
+      setLocalShowHint(false);
+    } else {
+      // Show hint and mark as used for scoring
+      setLocalShowHint(true);
+      useHint(); // This marks the hint as used for scoring purposes
+    }
+  };
 
   const checkSolution = async () => {
     if (!currentQuestionData) return;
@@ -148,19 +170,51 @@ const GameScreen = ({ onBack, onHome }) => {
       const completionTime = (Date.now() - startTime) / 1000;
       checkAchievements(completionTime);
 
-      // Submit to backend
+      // Submit to backend with properly formatted data
       try {
-        await submitSolution({
+        const submissionData = {
           gameMode,
-          levelId: currentLevel,
-          questionId: currentQuestion,
+          levelId: parseInt(currentLevel),
+          questionId: parseInt(currentQuestion),
           code: userCode,
-          score: points,
-          timeSpent: completionTime,
+          score: parseInt(points),
+          timeSpent: Math.round(completionTime),
           hintsUsed: hintUsed ? 1 : 0
+        };
+        
+        console.log('🚀 Submitting solution data:', submissionData);
+        console.log('🔍 Data types:', {
+          gameMode: typeof submissionData.gameMode,
+          levelId: typeof submissionData.levelId,
+          questionId: typeof submissionData.questionId,
+          code: typeof submissionData.code,
+          score: typeof submissionData.score,
+          timeSpent: typeof submissionData.timeSpent,
+          hintsUsed: typeof submissionData.hintsUsed
         });
+        
+        const result = await submitSolution(submissionData);
+        console.log('✅ Solution submitted successfully!', result);
+        
+        // Update user stats with the response from backend
+        if (result.updatedStats) {
+          console.log('🔄 Updating user stats with backend response:', result.updatedStats);
+          updateUserStats(result.updatedStats);
+        }
+        
+        // Check if this was the last question of the level
+        if (currentQuestion === totalQuestions) {
+          console.log('🎯 Level completed! Next level should now be unlocked automatically.');
+        }
+        
       } catch (err) {
-        console.error('Failed to submit solution:', err);
+        console.error('❌ Failed to submit solution:', err);
+        console.error('📊 Full error response:', err.response?.data);
+        console.error('📋 Error details:', {
+          status: err.response?.status,
+          statusText: err.response?.statusText,
+          data: err.response?.data
+        });
       }
 
       // Move to next question after delay
@@ -169,7 +223,8 @@ const GameScreen = ({ onBack, onHome }) => {
           setQuestion(currentQuestion + 1);
         } else {
           // Level completed
-          onBack(); // For now, go back to level selector
+          console.log('🏁 All questions completed, going back to level selector');
+          onBack(); // Go back to level selector with updated user stats
         }
       }, 2000);
     } else {
@@ -323,11 +378,11 @@ const GameScreen = ({ onBack, onHome }) => {
             <div className="space-y-4">
               <div className="flex flex-wrap gap-2">
                 <button
-                  onClick={useHint}
+                  onClick={toggleHint}
                   className="bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
                 >
-                  {showHint ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  <span>{showHint ? 'Hide Hint' : 'Show Hint'}</span>
+                  {localShowHint ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  <span>{localShowHint ? 'Hide Hint' : 'Show Hint'}</span>
                 </button>
                 
                 <button
@@ -349,7 +404,7 @@ const GameScreen = ({ onBack, onHome }) => {
                 )}
               </div>
               
-              {showHint && (
+              {localShowHint && (
                 <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
                   <p className="text-yellow-200">{currentQuestionData.hint}</p>
                 </div>

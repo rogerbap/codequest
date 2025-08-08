@@ -2,7 +2,7 @@
   "name": "server",
   "version": "1.0.0",
   "main": "index.js",
- "scripts": {
+  "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "client": "react-scripts start",
     "server": "cd server && nodemon server.js",
@@ -17,6 +17,7 @@
   "description": "",
   "dependencies": {
     "bcryptjs": "^3.0.2",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
