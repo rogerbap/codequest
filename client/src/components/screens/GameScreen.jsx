@@ -113,13 +113,16 @@ const GameScreen = ({ onBack, onHome }) => {
     }
   }, [gameMode, timeLeft, setTimeLeft, handleTimeUp]);
 
-// Fixed version - call the context function directly
+// Replace the existing toggleHint function with this:
 const toggleHint = () => {
   if (localShowHint) {
+    // Hide hint
     setLocalShowHint(false);
   } else {
+    // Show hint and mark as used for scoring
     setLocalShowHint(true);
-    useHint(); // This is actually a context function, not a hook
+    // Call the context function directly - this is NOT a React hook
+    useHint(); // This is just a regular function from GameContext
   }
 };
 
