@@ -141,6 +141,11 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 const PORT = process.env.PORT || 5000;
 
+// Added for deployment access to make sure server listens on 0.0.0.0, not just localhost
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+});
+
 // Start server
 const startServer = async () => {
   try {

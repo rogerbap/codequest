@@ -116,16 +116,13 @@ const GameScreen = ({ onBack, onHome }) => {
 // Replace the existing toggleHint function with this:
 const toggleHint = () => {
   if (localShowHint) {
-    // Hide hint
     setLocalShowHint(false);
   } else {
-    // Show hint and mark as used for scoring
     setLocalShowHint(true);
-    // Call the context function directly - this is NOT a React hook
-    useHint(); // This is just a regular function from GameContext
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useHint();
   }
 };
-
   const checkSolution = async () => {
     if (!currentQuestionData) return;
 
