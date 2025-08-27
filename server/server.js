@@ -85,21 +85,28 @@ if (process.env.NODE_ENV === 'production') {
 // Error handling middleware (must be before catch-all handlers)
 app.use(errorHandler);
 
-// Production catch-all handler for React Router (serves index.html for non-API routes)
-if (process.env.NODE_ENV === 'production') {
-  app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../build', 'index.html'));
-  });
-}
+// // Production catch-all handler for React Router (serves index.html for non-API routes)
+// if (process.env.NODE_ENV === 'production') {
+//   app.get('/', (req, res) => {
+//     res.sendFile(path.join(__dirname, '../build', 'index.html'));
+//   });
+// }
 
 // Final middleware - Handle all unmatched routes (404 handler)
-app.use((req, res) => {
-  // In production, serve React app for non-API routes
-  if (process.env.NODE_ENV === 'production' && !req.path.startsWith('/api/')) {
-    return res.sendFile(path.join(__dirname, '../build', 'index.html'));
-  }
+// app.use((req, res) => {
+//   // In production, serve React app for non-API routes
+//   if (process.env.NODE_ENV === 'production' && !req.path.startsWith('/api/')) {
+//     return res.sendFile(path.join(__dirname, '../build', 'index.html'));
+//   }
   
-  // Otherwise return 404 JSON response
+//   // Otherwise return 404 JSON response
+//   res.status(404).json({
+//     success: false,
+//     error: 'Route not found',
+//     path: req.originalUrl
+//   });
+// });
+app.use((req, res) => {
   res.status(404).json({
     success: false,
     error: 'Route not found',
